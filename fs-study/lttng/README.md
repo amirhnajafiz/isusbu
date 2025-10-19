@@ -1,5 +1,7 @@
 # LTTng
 
+LTTng is a tracing tool with low overhead and scalable for tracing system calls in a Linux machine.
+
 ## Installation
 
 On an Ubuntu machine:
