@@ -1,5 +1,31 @@
 # LTTng
 
+## Installation
+
+On an Ubuntu machine:
+
+```bash
+sudo apt-add-repository ppa:lttng/stable-2.13  # Or the latest stable version if different
+sudo apt-get update
+```
+
+Installing core packages:
+
+```bash
+sudo apt-get install lttng-tools
+sudo apt-get install lttng-modules-dkms
+sudo apt-get install liblttng-ust-dev
+```
+
+Install Babeltrace for trace analysis:
+
+```bash
+sudo apt-get install babeltrace
+sudo apt-get install python3-babeltrace
+```
+
+## Tracing example
+
 To enable LTTng, after installing it, follow these instructions.
 
 ```bash
