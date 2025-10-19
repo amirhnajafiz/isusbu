@@ -50,3 +50,9 @@ Now we can simply pass this output to any analysis script. In this case we use a
 ```bash
 python3 lttng_syscall_stats.py trace.txt
 ```
+
+To list all kernel syscalls that are being traced, you can run:
+
+```bash
+sudo lttng list --kernel --syscall
+```
