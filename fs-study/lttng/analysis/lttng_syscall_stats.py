@@ -13,10 +13,11 @@ from collections import Counter, defaultdict
 
 def count_syscalls(trace_file: str) -> tuple[Counter, defaultdict, defaultdict]:
     """Parse the trace file and count syscalls and their arguments."""
-    # regex to match syscall events
-    line_re = re.compile(
-        r"syscall_(entry|exit)_([a-zA-Z0-9_]+):.*?\{(.*)\}"
-    )
+    # regex to match syscall header and to capture all {...} groups on the line
+    header_re = re.compile(r"syscall_(entry|exit)_([A-Za-z0-9_]+):")
+    brace_re = re.compile(r"\{([^}]*)\}")
+    # key=value pairs: capture quoted values or up to the next comma/brace
+    kv_re = re.compile(r'(\b[\w_]+\b)\s*=\s*("(?:\\.|[^\"])*"|[^,}]+)')
 
     # data structures
     syscall_counts = Counter()
@@ -25,19 +26,45 @@ def count_syscalls(trace_file: str) -> tuple[Counter, defaultdict, defaultdict]:
 
     with open(trace_file) as f:
         for line in f:
-            m = line_re.search(line)
-            if not m:
+            h = header_re.search(line)
+            if not h:
                 continue
 
-            call_type, syscall_name, args_str = m.groups()
+            call_type, syscall_name = h.groups()
+
+            # find all {...} blocks on the line and combine them for kv parsing
+            braces = [m.group(1) for m in brace_re.finditer(line)]
+            if not braces:
+                continue
+
+            # check for procname in any brace; if it contains 'lttng' skip this event
+            procname = None
+            for b in braces:
+                mproc = re.search(r'procname\s*=\s*"([^"]+)"', b)
+                if mproc:
+                    procname = mproc.group(1)
+                    break
+                mproc2 = re.search(r'procname\s*=\s*([^,\s}]+)', b)
+                if mproc2:
+                    procname = mproc2.group(1).strip().strip('"')
+                    break
+
+            if procname and 'lttng' in procname:
+                # drop entities with lttng in procname
+                continue
+
             syscall_counts[syscall_name] += 1
             syscall_type_counts[syscall_name][call_type] += 1
 
-            # parse args key=value pairs inside { ... }
+            # aggregate kvs from all braces
+            args_text = ", ".join(braces)
             args = {}
-            for kv in re.finditer(r"(\w+)\s*=\s*([^,}]+)", args_str):
+            for kv in kv_re.finditer(args_text):
                 key, value = kv.groups()
-                args[key.strip()] = value.strip()
+                v = value.strip()
+                if v.startswith('"') and v.endswith('"') and len(v) >= 2:
+                    v = v[1:-1]
+                args[key.strip()] = v
 
             # collect argument stats for known flag-like args
             for k, v in args.items():

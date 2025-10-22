@@ -28,7 +28,7 @@ sudo apt-get install python3-babeltrace
 
 ## Tracing example
 
-To enable LTTng, after installing it, follow these instructions.
+To enable LTTng, after installing it, follow these instructions (or simple run `scripts/setup_lttng.sh`).
 
 ```bash
 # to trace syscalls, LTTng needs a session (a daemon), the output will be stored in the given address
@@ -45,7 +45,11 @@ sudo lttng add-context --kernel --type callstack-user
 
 # then we pass whatever we want to trace, in this case all syscalls
 sudo lttng enable-event --kernel --all --syscall
+```
 
+Now start the lttng session:
+
+```bash
 # next we start our lttng session (non-blocking operation)
 sudo lttng start
 
@@ -56,13 +60,14 @@ sudo lttng stop
 After that we use `babeltrace2` to export our logs into a text-based format file.
 
 ```bash
-sudo babeltrace2 /tmp/lttng-traces-100 > trace.txt
+sudo babeltrace2 /tmp/lttng-traces-100 > example.trace.txt
 ```
 
 Now we can simply pass this output to any analysis script. In this case we use a simple python script.
 
 ```bash
-python3 lttng_syscall_stats.py trace.txt
+# this script drops the syscalls made by any lttng processes, and counts the remaining syscalls
+python3 lttng_syscall_stats.py example.trace.txt
 ```
 
 To list all kernel syscalls that are being traced, you can run:
