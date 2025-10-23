@@ -41,11 +41,24 @@ sudo scripts/start_lttng.sh
 sudo scripts/stop_lttng.sh
 ```
 
-Now we can simply pass this output to any analysis script. In this case we use a simple python script.
+### configuration
+
+You can edit the values in `.config.env` to control your LTTng session.
 
 ```bash
-# this script drops the syscalls made by any lttng processes, and counts the remaining syscalls (by default it reads trace.txt)
-python3 lttng_syscall_stats.py example.trace.txt
+# LTTng tracing configuration
+# session name
+SESSION="all-syscalls-session"
+
+# output directory
+OUTPUT="/tmp"
+
+# configuration rotation
+ENABLE_ROTATION="yes"
+ROTATION_SIZE="200M"
+
+# the following contexts are useful for analyzing syscall stacks, but may add overhead
+ENABLE_STACKS="no"
 ```
 
 ### NOTE
@@ -54,4 +67,13 @@ To list all kernel syscalls that are being traced, you can run:
 
 ```bash
 sudo lttng list --kernel --syscall
+```
+
+## Log Analysis
+
+Now we can simply pass this output to any analysis script. In this case we use a simple python script.
+
+```bash
+# this script drops the syscalls made by any lttng processes, and counts the remaining syscalls (by default it reads trace.txt)
+python3 lttng_syscall_stats.py example.trace.txt
 ```
