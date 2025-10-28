@@ -22,3 +22,7 @@ trace.txt
 trace.txt*
 plots/
 logs/
+
+# Specific files
+lang-graph/callgraph.txt
+lang-graph/sqlite3.c
