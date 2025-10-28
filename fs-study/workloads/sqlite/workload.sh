@@ -3,7 +3,7 @@
 # check to see if apache-benchmark is installed
 if ! command -v sqlite3 &> /dev/null
 then
-    echo "apache-benchmark could not be found, please install it to run this workload."
+    echo "sqlite3 could not be found, please install it to run this workload."
     exit 1
 fi
 
