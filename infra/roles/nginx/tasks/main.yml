@@ -1,0 +1,24 @@
+---
+# file: roles/nginx/tasks/main.yml
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+  notify:
+    - enable Nginx
+    - restart Nginx
+    - reload Nginx
+
+- name: Copy Nginx configuration file
+  template:
+    src: templates/etc_nginx_nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+  notify:
+    - restart Nginx
+
+- name: Copy default site configuration file
+  template:
+    src: templates/etc_nginx_conf.d_default.conf.j2
+    dest: /etc/nginx/conf.d/default.conf
+  notify:
+    - restart Nginx
