@@ -1,0 +1,10 @@
+# file: hosts
+
+# web servers in all
+[webservers:children]
+
+# db servers in all
+[dbservers:children]
+
+# containers servers in all
+[contservers:children]
