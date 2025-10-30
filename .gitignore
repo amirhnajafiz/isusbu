@@ -26,3 +26,7 @@ logs/
 # Specific files
 lang-graph/callgraph.txt
 lang-graph/sqlite3.c
+infra/production.ini
+infra/hosts.ini
+infra/*.log
+infra/ansible.cfg
