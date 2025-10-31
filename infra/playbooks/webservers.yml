@@ -4,6 +4,7 @@
   hosts: webservers
   become: yes
   vars:
+    stype: "vm"
     atype: "web"
   roles:
     - common

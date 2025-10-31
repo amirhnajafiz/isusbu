@@ -21,16 +21,6 @@ server {
         try_files $uri $uri/ =404;
     }
 
-    # Proxying
-    location /api/ {
-        limit_req zone=req_limit_per_ip burst=10 nodelay;
-        proxy_pass http://backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_cache my_cache;
-        proxy_cache_valid 200 1m;
-    }
-
     # Static Files
     location /static/ {
         expires 30d;
@@ -47,20 +37,5 @@ server {
     location = /custom_404.html {
         root /usr/share/nginx/html;
         internal;
-    }
-}
-
-# HTTPS Server
-server {
-    listen 443 ssl;
-    server_name localhost;
-
-    ssl_certificate     /etc/ssl/certs/nginx-selfsigned.crt;
-    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-
-    location / {
-        return 200 "SSL is working\n";
     }
 }

@@ -10,11 +10,11 @@ Playbook installs:
 - `Docker`
 - `LTTng`
 
-Adjust your hosts in the `hosts` file then pass it to the main playbook.
+Adjust your hosts in the `hosts.ini` file then pass it to the main playbook.
 
 ```bash
 # this runs the main playbook, you can run individuals from playbooks directory
-ansible-playbook -i hosts site.yml -K # ask-become-pass is needed for root access to run sudo commands
+ansible-playbook -i hosts site.yml
 ```
 
 To test your hosts you can also run:
@@ -36,6 +36,14 @@ NOTE: To cleanup each playbook, pass the `cleanup` tag.
 # this will uninstall every package that was installed by this playbook
 ansible-playbook -i hosts site.yml --tags cleanup
 ```
+
+## History of Ansible commands that we used
+
+```bash
+# cleanup nginx from servers
+ansible-playbook -i production.ini playbooks/webservers.yml --tags cleanup,nginx
+```
+
 
 ## References
 

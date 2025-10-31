@@ -28,3 +28,5 @@ lang-graph/callgraph.txt
 lang-graph/sqlite3.c
 infra/production.ini
 infra/*.log
+infra/.vault_pass.txt
+vault.yml
