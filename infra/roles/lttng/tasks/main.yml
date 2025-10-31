@@ -10,19 +10,3 @@
     state: present
     update_cache: yes
   notify: enable lttng # roles/lttng/handlers/main.yml
-
-- name: Uninstall LTTng packages
-  apt:
-    name:
-      - lttng-tools
-      - lttng-modules-dkms
-      - liblttng-ust-dev
-      - babeltrace2
-    state: absent
-  tags:
-    - never # never run this by default
-    - cleanup
-    - lttng
-  when:
-    - "'cleanup' in ansible_run_tags"
-    - "'lttng' in ansible_run_tags"

@@ -13,19 +13,21 @@
   
 - name: Create Docker keyring directory
   file:
-    path: /usr/share/keyrings
+    path: /etc/apt/keyrings
     state: directory
     mode: '0755'
 
-- name: Add Docker's official GPG key to keyring
+- name: Add Docker’s official GPG key
   get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
-    dest: /usr/share/keyrings/docker-archive-keyring.gpg
+    dest: /etc/apt/keyrings/docker.gpg
     mode: '0644'
 
 - name: Add Docker APT repository
   apt_repository:
-    repo: deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable
+    repo: >-
+      deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.gpg]
+      https://download.docker.com/linux/ubuntu jammy stable
     state: present
 
 - name: Install Docker CE
@@ -43,18 +45,3 @@
     name: "{{ ansible_user }}"
     groups: docker
     append: yes
-
-- name: Uninstall Docker
-  apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-    state: absent
-  tags:
-    - never # never run this by default 
-    - cleanup
-    - docker
-  when:
-    - "'cleanup' in ansible_run_tags"
-    - "'docker' in ansible_run_tags"
