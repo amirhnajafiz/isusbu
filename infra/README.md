@@ -45,6 +45,9 @@ ansible-playbook -i hosts playbooks/dbservers.yml --tags mysql
 ```bash
 # only installing the web-servers
 ansible-playbook -i production.ini playbooks/webservers.yml
+
+# installing sqlite
+ansible-playbook -i production.ini playbooks/dbservers.yml --tags sqlite
 ```
 
 ## References
