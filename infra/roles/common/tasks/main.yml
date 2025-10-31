@@ -21,3 +21,11 @@
     owner: root
     group: root
     mode: '0644'
+
+- name: Debug variables from group_vars
+  ansible.builtin.debug:
+    msg:
+      - "Playbook Name: {{ playbook_name }}"
+      - "Playbook Version: {{ playbook_version }}"
+      - "Server Type: {{ server_type }}"
+      - "Application Type: {{ application_type }}"

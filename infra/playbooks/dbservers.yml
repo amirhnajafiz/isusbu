@@ -4,11 +4,15 @@
   hosts: dbservers
   become: yes
   vars:
-    atype: "database"
+    application_type: "{{ 'mysql' if 'mysql' in ansible_run_tags else 'sqlite' if 'sqlite' in ansible_run_tags else 'none' }}"
   roles:
     - common
     - lttng
     - role: mysql
-      tags: ['mysql']
+      tags:
+        - never # never run by default
+        - mysql
     - role: sqlite
-      tags: ['sqlite']
+      tags: 
+        - never # never run by default
+        - sqlite
