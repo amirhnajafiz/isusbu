@@ -6,8 +6,12 @@
   vars:
     application_type: "{{ 'mysql' if 'mysql' in ansible_run_tags else 'sqlite' if 'sqlite' in ansible_run_tags else 'none' }}"
   roles:
-    - common
-    - lttng
+    - role: common
+      tags:
+        - always
+    - role: lttng
+      tags:
+        - always
     - role: mysql
       tags:
         - never # never run by default
