@@ -4,6 +4,9 @@ import importlib.util
 import tempfile
 import difflib
 import hashlib
+from datetime import datetime
+
+import pandas as pd
 import streamlit as st
 
 # ======================= Dynamic import of slicer.py =======================
@@ -14,11 +17,11 @@ if MOD_NAME in sys.modules:
     del sys.modules[MOD_NAME]
 
 _spec = importlib.util.spec_from_file_location(MOD_NAME, SLICER_PATH)
-_mod = importlib.util.module_from_spec(_spec)  
+_mod = importlib.util.module_from_spec(_spec)
 assert _spec and _spec.loader, f"Cannot import slicer.py at {SLICER_PATH}"
 sys.modules[MOD_NAME] = _mod
 try:
-    _spec.loader.exec_module(_mod)  
+    _spec.loader.exec_module(_mod)
 except Exception as e:
     st.error(f"Import error loading slicer.py at {SLICER_PATH}:\n{e}")
     st.stop()
@@ -49,11 +52,9 @@ def _remove_function_from_c_source(src_text: str, func: str, debug: bool = False
     Robustly remove a C function definition named `func` from `src_text`.
     Handles storage qualifiers, attributes, comments, newlines, and braces inside
     strings/comments. Returns (new_text, removed: bool, info_msg).
-    
-    IMPROVED VERSION with better pattern matching and debug support.
     """
     text = src_text.replace("\r\n", "\n")
-    
+
     # Try regex-based approach first for better multi-line signature handling
     pattern = re.compile(
         r'('
@@ -66,28 +67,28 @@ def _remove_function_from_c_source(src_text: str, func: str, debug: bool = False
         r')',
         re.MULTILINE | re.DOTALL
     )
-    
+
     matches = list(pattern.finditer(text))
-    
+
     if debug and matches:
         st.info(f"Regex found {len(matches)} potential matches for '{func}'")
-    
+
     if not matches:
         # Fallback: simple search
         name_idx = text.find(func + "(")
         if name_idx == -1:
             return src_text, False, f"Function '{func}' not found (name search failed)."
-        
+
         if debug:
             st.warning(f"Using fallback method for '{func}'")
-        
+
         # Check for definition vs prototype
         semi_idx = text.find(";", name_idx)
         brace_idx = text.find("{", name_idx)
-        
+
         if brace_idx == -1:
             return src_text, False, f"No opening brace found for '{func}'."
-        
+
         if semi_idx != -1 and semi_idx < brace_idx:
             # This might be a prototype, try next occurrence
             name_idx = text.find(func + "(", name_idx + 1)
@@ -96,52 +97,52 @@ def _remove_function_from_c_source(src_text: str, func: str, debug: bool = False
             brace_idx = text.find("{", name_idx)
             if brace_idx == -1:
                 return src_text, False, f"No opening brace found for '{func}'."
-        
+
         # Find signature start (go back to capture return type)
         sig_start = text.rfind("\n", 0, name_idx) + 1
-        
+
         # Check previous lines for return type
         check_pos = sig_start - 1
         while check_pos > 0:
             prev_line_start = text.rfind("\n", 0, check_pos - 1) + 1
             prev_line = text[prev_line_start:check_pos].strip()
-            
-            if prev_line and not prev_line.startswith(('//','/*')) and not prev_line.endswith((';','}','{')):
+
+            if prev_line and not prev_line.startswith(('//', '/*')) and not prev_line.endswith((';', '}', '{')):
                 sig_start = prev_line_start
                 check_pos = prev_line_start
             else:
                 break
-        
+
     else:
         # Use regex match
         match = matches[0]
         sig_start = match.start()
         brace_idx = match.end() - 1
-        
+
         if debug:
-            preview = text[sig_start:min(sig_start+150, len(text))]
+            preview = text[sig_start:min(sig_start + 150, len(text))]
             st.code(f"Found at pos {sig_start}:\n{preview}", language="c")
 
     # Find matching closing brace with proper string/comment handling
     i = brace_idx
     depth = 0
     n = len(text)
-    
+
     in_string = False
     in_char = False
     in_sl_comment = False
     in_ml_comment = False
     escape_next = False
-    
+
     while i < n:
         ch = text[i]
         next_ch = text[i + 1] if i + 1 < n else ''
-        
+
         if escape_next:
             escape_next = False
             i += 1
             continue
-        
+
         if in_string:
             if ch == '\\':
                 escape_next = True
@@ -176,27 +177,27 @@ def _remove_function_from_c_source(src_text: str, func: str, debug: bool = False
                 depth -= 1
                 if depth == 0:
                     body_end = i + 1
-                    
+
                     # Clean up: remove preceding newline if exists
                     cut_start = sig_start
                     if cut_start > 0 and text[cut_start - 1] == '\n':
                         cut_start -= 1
-                    
+
                     # Clean up: remove trailing newline if exists
                     cut_end = body_end
                     if cut_end < n and text[cut_end] == '\n':
                         cut_end += 1
-                    
+
                     new_text = text[:cut_start] + text[cut_end:]
                     chars_removed = cut_end - cut_start
-                    
+
                     if debug:
                         st.success(f"Successfully removed {chars_removed} characters")
-                    
+
                     return new_text, True, f"Removed '{func}' ({chars_removed} chars)."
-        
+
         i += 1
-    
+
     return src_text, False, f"Unbalanced braces for '{func}' (final depth={depth})."
 
 
@@ -218,8 +219,8 @@ def _clear_removal_state():
 
 def _clear_analysis_state():
     """Clear analysis results but keep uploaded files."""
-    for k in ("last_agent_result", "static_decision", "llm_decision", "llm_rationale", 
-              "direct_callers", "trans_callers", "direct_callees", "trans_callees", 
+    for k in ("last_agent_result", "static_decision", "llm_decision", "llm_rationale",
+              "direct_callers", "trans_callers", "direct_callees", "trans_callees",
               "snippet", "edge_warnings", "pointer_usage", "func_metadata"):
         st.session_state.pop(k, None)
 
@@ -229,7 +230,11 @@ def _clear_analysis_state():
 st.set_page_config(page_title="LLM-assisted Code Optimizer using LangGraph ", layout="wide")
 st.title("LLM-assisted Code Optimizer using LangGraph")
 
-# --- Render success + download ASAP on each rerun (before other logic) .This is the resolution for the state mgmnt issue ---
+# Initialize session usage history (persists per session)
+if "usage_history" not in st.session_state:
+    st.session_state["usage_history"] = []  # list[dict] of per-call usage rows
+
+# --- Render success + download ASAP on each rerun (before other logic) ---
 if "updated_src" in st.session_state and "removed_func" in st.session_state:
     target_ok = st.session_state.get("removed_func")
     new_text = st.session_state.get("updated_src", "")
@@ -275,10 +280,9 @@ with st.sidebar:
     st.subheader("Model")
     default_model = os.environ.get("MODEL", "gpt-3.5-turbo")
     model = st.text_input("LLM model", value=default_model, help="Model name passed to the OpenAI client in slicer.py")
-    #st.caption(f"slicer: {SLICER_PATH}")
-    
+
     st.divider()
-    
+
     # Add reset button
     if st.button("🗑️ Clear all data", help="Clear all uploaded files and analysis results"):
         for key in list(st.session_state.keys()):
@@ -304,7 +308,7 @@ if cg_file:
     except Exception as e:
         st.error(f"Failed to parse function names: {e}")
 
-# --- Upload C source (sqlite3.c) with IMPROVED session state management ---
+# --- Upload C source (sqlite3.c) with session state mgmt ---
 src_file = st.file_uploader("Upload C source", type=["c", "txt"], key="src")
 
 # Initialize session state for source if not exists
@@ -324,39 +328,39 @@ if src_file:
     # Read file content
     file_bytes = src_file.read()
     file_hash = get_file_hash(file_bytes)
-    
+
     # Check if this is a new/different file
     if file_hash != st.session_state["__src_hash__"]:
         # New file uploaded - process it
         with tempfile.NamedTemporaryFile(delete=False, suffix=".c", mode="wb") as tmp:
             tmp.write(file_bytes)
             src_temp_path = tmp.name
-        
+
         src_text = file_bytes.decode("utf-8", errors="ignore")
-        
+
         # Store in session state IMMEDIATELY
         st.session_state["__src_text__"] = src_text
         st.session_state["__src_name__"] = getattr(src_file, "name", "source.c")
         st.session_state["__src_hash__"] = file_hash
         st.session_state["__src_temp_path__"] = src_temp_path
-        
+
         # Clear any previous removal/analysis state when new file uploaded
         _clear_removal_state()
         _clear_analysis_state()
-        
+
         st.success(f"Saved C source: `{src_temp_path}` ({len(src_text):,} chars)")
     else:
         # Same file as before - use cached data
         src_text = st.session_state["__src_text__"]
         src_temp_path = st.session_state.get("__src_temp_path__")
-        
+
         # If temp path doesn't exist, recreate it
         if not src_temp_path or not Path(src_temp_path).exists():
             with tempfile.NamedTemporaryFile(delete=False, suffix=".c", mode="wb") as tmp:
                 tmp.write(file_bytes)
                 src_temp_path = tmp.name
             st.session_state["__src_temp_path__"] = src_temp_path
-    
+
     if src_text:
         with st.expander("Source preview (first ~1200 chars)"):
             st.code(src_text[:1200], language="c")
@@ -375,11 +379,6 @@ if "selected_target" not in st.session_state:
 widget_options = cg_functions or ([st.session_state["selected_target"]] if st.session_state["selected_target"] else [])
 selected = st.selectbox("Target function", options=widget_options, key="target_select")
 
-#manual = st.text_input("Override function name (optional)", value="", key="target_override")
-#if manual.strip():
-    #st.session_state["selected_target"] = manual.strip()
-    #st.rerun()
-
 if selected and selected != st.session_state["selected_target"]:
     st.session_state["selected_target"] = selected
 
@@ -393,7 +392,7 @@ go = st.button("Analyze", disabled=not (cg_temp_path and src_temp_path and targe
 if go and cg_temp_path and src_temp_path and target:
     _clear_removal_state()  # fresh run
     _clear_analysis_state()  # clear old analysis
-    
+
     with st.spinner("Analyzing (static + LLM)…"):
         result = cg_app.invoke({
             "cg_path": cg_temp_path,
@@ -402,8 +401,47 @@ if go and cg_temp_path and src_temp_path and target:
             "model": model,
             "messages": [],
         })
-    
-    # Store results in session state so they persist across reruns (like checkbox clicks)
+
+    # --- Token usage capture + logging ---
+    usage = result.get("token_usage") or {}
+    # Fallback parse from messages if needed (handles SDK differences)
+    if not usage:
+        import re as _re
+        _RX = _re.compile(r"Usage:\s*prompt=(\d+)\s+completion=(\d+)\s+total=(\d+)")
+        for m in (result.get("messages") or []):
+            text = (m.get("content") if isinstance(m, dict) else getattr(m, "content", "")) or ""
+            mm = _RX.search(text)
+            if mm:
+                usage = {"prompt_tokens": int(mm.group(1)), "completion_tokens": int(mm.group(2)), "total_tokens": int(mm.group(3))}
+                break
+
+    prompt_tokens = usage.get("prompt_tokens", usage.get("input_tokens"))
+    completion_tokens = usage.get("completion_tokens", usage.get("output_tokens"))
+    total_tokens = usage.get("total_tokens")
+    if total_tokens is None and (prompt_tokens is not None or completion_tokens is not None):
+        try:
+            total_tokens = (prompt_tokens or 0) + (completion_tokens or 0)
+        except Exception:
+            total_tokens = None
+
+    st.session_state["token_usage"] = {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens,
+    }
+
+    # Append usage row to history
+    st.session_state["usage_history"].append({
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "model": model,
+        "target": target,
+        "llm_decision": result.get("llm_decision"),
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens,
+    })
+
+    # Store other results in session state
     st.session_state["last_agent_result"] = result
     st.session_state["static_decision"] = result.get("decision", "UNKNOWN")
     st.session_state["llm_decision"] = result.get("llm_decision", "DO_NOT_REMOVE")
@@ -433,7 +471,7 @@ if "last_agent_result" in st.session_state:
     func_metadata = st.session_state.get("func_metadata")
 
     st.subheader("Decisions")
-    
+
     st.markdown(f"**LLM decision:** {('✅ REMOVE' if llm_decision == 'REMOVE' else '⛔ DO_NOT_REMOVE')}")
     if llm_rationale:
         with st.expander("LLM rationale"):
@@ -449,7 +487,7 @@ if "last_agent_result" in st.session_state:
                 st.error(warning)
             else:
                 st.warning(warning)
-        
+
         # Show additional metadata if available
         if func_metadata:
             with st.expander("Function Metadata"):
@@ -462,7 +500,7 @@ if "last_agent_result" in st.session_state:
                 with col3:
                     is_reg = bool(pointer_usage.get("function_registration", []))
                     st.metric("Registered", "Yes" if is_reg else "No")
-                
+
                 # Show context snippets if available
                 if pointer_usage.get("context_snippets"):
                     st.write("**Usage Context:**")
@@ -475,34 +513,34 @@ if "last_agent_result" in st.session_state:
             f"**Direct callers ({len(direct_callers)}):** "
             + (", ".join(direct_callers) if direct_callers else "*(none)*")
         )
-        
+
         if not direct_callers:
             st.info("✓ No functions call this function directly")
-        
+
         st.divider()
-        
+
         st.subheader("⬆️ OUTGOING: What this function calls")
         st.markdown(
             f"**Direct callees ({len(direct_callees)}):** "
             + (", ".join(direct_callees) if direct_callees else "*(none)*")
         )
-        
+
         if not direct_callees:
             st.info("✓ This function doesn't call any other functions (leaf node)")
-        
+
         # Show interpretation
         st.divider()
         st.subheader(" Interpretation")
-        
+
         if not direct_callers:
             if not direct_callees:
                 st.success("**Isolated function**: No incoming or outgoing calls. Likely dead code if no edge cases detected.")
             else:
                 st.warning(f"**Dead code with dependencies**: Not called by anyone, but calls {len(direct_callees)} function(s). "
-                          f"Removing it could clean up this unused code path (if no edge cases like callbacks/registrations).")
+                           f"Removing it could clean up this unused code path (if no edge cases like callbacks/registrations).")
         else:
             st.info(f"**Active function**: Called by {len(direct_callers)} function(s) and calls {len(direct_callees)} function(s). "
-                   f"Part of the active call graph.")
+                    f"Part of the active call graph.")
 
     if snippet:
         with st.expander("Target function snippet"):
@@ -519,23 +557,23 @@ if "last_agent_result" in st.session_state:
 
     if allow_remove:
         st.success("You may remove this function.")
-        
+
         # Debug mode checkbox
         debug_removal = st.checkbox(
             "Show debug info",
             key="debug_removal_checkbox",
             help="Display detailed diagnostic information about the removal process"
         )
-        
+
         # Show diagnostic info if debug enabled
         if debug_removal:
             with st.expander("Session State Diagnostic", expanded=True):
                 st.subheader("Current State")
-                
+
                 cached_src = st.session_state.get("__src_text__")
-                
+
                 col1, col2 = st.columns(2)
-                
+
                 with col1:
                     st.write("**Session State:**")
                     if cached_src:
@@ -543,7 +581,7 @@ if "last_agent_result" in st.session_state:
                         st.write(f"✅ Filename: {st.session_state.get('__src_name__', 'N/A')}")
                     else:
                         st.write("❌ No source in session state")
-                
+
                 with col2:
                     st.write("**Target Function:**")
                     st.write(f"Name: `{target}`")
@@ -554,18 +592,18 @@ if "last_agent_result" in st.session_state:
                         st.write(f"❌ NOT found in source")
                     else:
                         st.write("❌ No source to search")
-                
+
                 if cached_src and target + "(" in cached_src:
                     idx = cached_src.find(target + "(")
                     preview_start = max(0, idx - 150)
                     preview_end = min(len(cached_src), idx + 250)
                     st.subheader("Function Context Preview")
                     st.code(cached_src[preview_start:preview_end], language="c")
-        
+
         if st.button(f"Confirm removal of '{target}'", key="confirm_remove"):
             # CRITICAL: Always use session state source
             base_src_text = st.session_state.get("__src_text__")
-            
+
             # Safety checks
             if not base_src_text:
                 st.error("❌ ERROR: Source code not found in session state!")
@@ -574,7 +612,7 @@ if "last_agent_result" in st.session_state:
                 st.write("2. Click 'Analyze' again")
                 st.write("3. Then click 'Confirm removal'")
                 st.stop()
-            
+
             if target not in base_src_text:
                 st.error(f"❌ ERROR: Function '{target}' not found in source!")
                 st.write(f"Source has {len(base_src_text):,} characters")
@@ -582,15 +620,15 @@ if "last_agent_result" in st.session_state:
                 st.write("- Function name is spelled correctly")
                 st.write("- Function exists in the uploaded source file")
                 st.stop()
-            
+
             # Perform removal
             with st.spinner(f"Removing '{target}'..."):
                 new_text, removed, info = _remove_function_from_c_source(
-                    base_src_text, 
+                    base_src_text,
                     target,
                     debug=debug_removal
                 )
-            
+
             if removed:
                 # Store results in session state
                 st.session_state["removed_func"] = target
@@ -598,7 +636,7 @@ if "last_agent_result" in st.session_state:
                 st.session_state["orig_src"] = base_src_text
                 st.session_state["src_name"] = st.session_state.get("__src_name__", "source.c")
                 st.session_state["removal_info"] = info
-                
+
                 # Save a physical copy to temp directory for download
                 try:
                     base, dot, ext = st.session_state["src_name"].rpartition(".")
@@ -609,7 +647,7 @@ if "last_agent_result" in st.session_state:
                 except Exception as e:
                     st.session_state["saved_file_path"] = ""
                     st.warning(f"Could not save temp file: {e}")
-                
+
                 st.rerun()  # ensure success panel renders immediately
             else:
                 st.error(f"❌ Removal failed: {info}")
@@ -623,6 +661,36 @@ if "last_agent_result" in st.session_state:
             "Removal is disabled because either the static graph shows dependencies "
             "or the LLM advised against removal."
         )
+
+# ============================== LLM Usage Panel ==============================
+st.divider()
+st.subheader("LLM API Usage (this session)")
+
+hist = st.session_state.get("usage_history", [])
+if not hist:
+    st.caption("No API calls yet.")
+else:
+    df = pd.DataFrame(hist)
+
+    # Metrics row
+    total_calls = len(df)
+    total_prompt = int(df["prompt_tokens"].fillna(0).sum())
+    total_completion = int(df["completion_tokens"].fillna(0).sum())
+    total_all = int(df["total_tokens"].fillna(0).sum() if "total_tokens" in df else (total_prompt + total_completion))
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("API calls", total_calls)
+    m2.metric("Prompt tokens (Σ)", f"{total_prompt:,}")
+    m3.metric("Completion tokens (Σ)", f"{total_completion:,}")
+    m4.metric("Total tokens (Σ)", f"{total_all:,}")
+
+    # Display the detailed table (latest first)
+    df_disp = df.iloc[::-1].reset_index(drop=True)
+    st.dataframe(
+        df_disp[["time", "model", "target", "llm_decision", "prompt_tokens", "completion_tokens", "total_tokens"]],
+        use_container_width=True,
+        hide_index=True
+    )
 
 # Diagnostics log (raw agent messages) - only show if we have results
 if "last_agent_result" in st.session_state:

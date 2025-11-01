@@ -269,14 +269,15 @@ class State(TypedDict):
     edge_case_warnings: List[str]
 
     # outputs
-    callers: List[str]        # direct callers (incoming)
-    callers_transitive: List[str]  # transitive callers (incoming)
-    callees: List[str]        # direct callees (outgoing)
-    callees_transitive: List[str]  # transitive callees (outgoing)
-    decision: str             # "SAFE_TO_REMOVE" | "DEPENDENT" (static-graph based)
-    llm_decision: str         # "REMOVE" | "DO_NOT_REMOVE"
-    llm_rationale: str        # LLM free-text explanation
-    evidence_snippet: str     # extracted function body snippet
+    callers: List[str]                     # direct callers (incoming)
+    callers_transitive: List[str]          # transitive callers (incoming)
+    callees: List[str]                     # direct callees (outgoing)
+    callees_transitive: List[str]          # transitive callees (outgoing)
+    decision: str                          # "SAFE_TO_REMOVE" | "DEPENDENT" (static-graph based)
+    llm_decision: str                      # "REMOVE" | "DO_NOT_REMOVE"
+    llm_rationale: str                     # LLM free-text explanation
+    token_usage: Dict[str, Optional[int]]  # OpenAI token usage
+    evidence_snippet: str                  # extracted function body snippet
 
 
 # -------------
@@ -519,6 +520,14 @@ def llm_decide(state: State):
         max_tokens=500,
     )
 
+    # NEW: capture token usage safely (SDK-dependent)
+    usage = getattr(resp, "usage", None)
+    token_usage = {
+        "prompt_tokens": getattr(usage, "prompt_tokens", None) if usage is not None else None,
+        "completion_tokens": getattr(usage, "completion_tokens", None) if usage is not None else None,
+        "total_tokens": getattr(usage, "total_tokens", None) if usage is not None else None,
+    }
+
     content = resp.choices[0].message.content.strip()
 
     # Parse LLM response
@@ -542,9 +551,18 @@ def llm_decide(state: State):
     return {
         "llm_decision": decision,
         "llm_rationale": rationale,
+        "token_usage": token_usage,
         "messages": [{
             "role": "assistant",
-            "content": f"LLM decision: {decision} (confidence: {confidence})\nReason: {rationale[:400]}"
+            "content":  (
+                f"LLM decision: {decision} (confidence: {confidence})\n"
+                f"Reason: {rationale[:400]}\n"
+                f"Usage: prompt={token_usage.get('prompt_tokens')} "
+                f"completion={token_usage.get('completion_tokens')} "
+                f"total={token_usage.get('total_tokens')}"
+            )
+            
+            #f"LLM decision: {decision} (confidence: {confidence})\nReason: {rationale[:400]}"
         }],
     }
 
