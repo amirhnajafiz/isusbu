@@ -48,6 +48,9 @@ ansible-playbook -i production.ini playbooks/webservers.yml
 
 # installing sqlite
 ansible-playbook -i production.ini playbooks/dbservers.yml --tags sqlite
+
+# installing docker
+ansible-playbook -i production.ini playbooks/contservers.yml
 ```
 
 ## References
