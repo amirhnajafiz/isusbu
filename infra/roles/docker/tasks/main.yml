@@ -5,38 +5,25 @@
     name:
       - apt-transport-https
       - ca-certificates
-      - curl
-      - gnupg-agent
       - software-properties-common
     state: present
     update_cache: yes
   
-- name: Create Docker keyring directory
-  file:
-    path: /etc/apt/keyrings
-    state: directory
-    mode: '0755'
-
-- name: Add Docker’s official GPG key
-  get_url:
+- name: Add Docker official GPG key
+  apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg
-    dest: /etc/apt/keyrings/docker.gpg
-    mode: '0644'
+    state: present
 
-- name: Add Docker APT repository
+- name: Add Docker repository
   apt_repository:
-    repo: >-
-      deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.gpg]
-      https://download.docker.com/linux/ubuntu jammy stable
+    repo: deb https://download.docker.com/linux/ubuntu focal stable
     state: present
 
 - name: Install Docker CE
   apt:
     name: 
       - docker-ce
-      - docker-ce-cli
-      - containerd.io
-    state: present
+    state: latest
     update_cache: yes
   notify: enable and start Docker service
 
