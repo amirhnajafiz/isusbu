@@ -41,3 +41,8 @@
     mode: '0644'
   notify:
     - restart Nginx
+
+- name: Allow Nginx Full profile
+  community.general.ufw:
+    rule: allow
+    name: 'Nginx Full'
