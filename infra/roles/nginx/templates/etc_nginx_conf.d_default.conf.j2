@@ -1,4 +1,8 @@
 # /etc/nginx/conf.d/default.conf
+upstream myapp_servers {
+    server localhost:8000;
+}
+
 server {
     listen       80;
     server_name  localhost;
@@ -32,10 +36,32 @@ server {
         return 301 /static/index.html;
     }
 
+    # Proxy Pass
+    location /api {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_pass http://myapp_servers;
+    }
+
     # Error Handling
     error_page 404 /custom_404.html;
     location = /custom_404.html {
         root /usr/share/nginx/html;
         internal;
     }
+}
+
+server {
+    listen 443 ssl;
+    server_name localhost;  # change this to your domain
+
+    ssl_certificate     /etc/ssl/certs/localhost.crt;
+    ssl_certificate_key /etc/ssl/private/localhost.key;
+
+    # Minimal SSL settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Redirect everything to HTTP
+    return 301 http://$host$request_uri;
 }
