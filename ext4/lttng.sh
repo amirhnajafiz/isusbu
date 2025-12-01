@@ -9,7 +9,7 @@ cexists() {
 if cexists "lttng"; then
     echo "lttng found!"
 else
-    echo "please install lttng!!"
+    echo "please install lttng!"
     exit 1
 fi
 

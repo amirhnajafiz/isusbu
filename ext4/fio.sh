@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# --- CONFIG ---------------------------------------------------------
-
-LTTNG_SCRIPT="./lttng.sh"   # lttng runner (must accept a number argument)
-
-# -------------------------------------------------------------------
-
 echo "=== FIO EXT4 Feature Testing Suite ==="
 echo ""
 
@@ -16,7 +10,11 @@ mkdir -p "$TEST_DIR"
 echo "Test directory: $(pwd)"
 echo ""
 
-# Function to run a single test with LTTNG start/stop
+selected_test="$1"
+
+# -------------------------------
+# Function: run one FIO test
+# -------------------------------
 run_fio_test() {
     local num="$1"
     local name="$2"
@@ -29,35 +27,11 @@ run_fio_test() {
     echo "Expected EXT4 features: $features"
     echo ""
 
-    #
-    # 1 — Initialize LTTNG for this test
-    #
-    echo "[LTTNG] Initializing trace session: $num"
-    $LTTNG_SCRIPT "$num"
-    if [ $? -ne 0 ]; then
-        echo "ERROR: lttng.sh failed for test $num"
-        exit 1
-    fi
-
-    SESSION="ext4-session-${num}"
-
-    echo "[LTTNG] Starting trace"
-    sudo lttng start --session="$SESSION"
-
     cd "$TEST_DIR" || exit 1
 
-    #
-    # 2 — Write the FIO config and run workload
-    #
     echo "$config" > "${name}.fio"
     echo "Running: fio ${name}.fio"
     fio "${name}.fio"
-
-    #
-    # 3 — Stop & Destroy LTTNG Session
-    #
-    echo "[LTTNG] Stopping trace"
-    sudo lttng stop --session="$SESSION"
 
     echo "Completed test: $name"
     echo "----------------------------------------------"
@@ -66,13 +40,9 @@ run_fio_test() {
     cd .. || exit 1
 }
 
-# -------------------------
-#  LIST OF 10 TEST CASES
-# -------------------------
-#!/bin/bash
-
-selected_test="$1"
-
+# -------------------------------
+# Wrapper to filter tests
+# -------------------------------
 run_test() {
     local num="$1"
     local desc="$2"
@@ -84,7 +54,9 @@ run_test() {
     fi
 }
 
-
+# -------------------------------
+# TEST DEFINITIONS
+# -------------------------------
 run_test 1 "SEQUENTIAL WRITE TEST (Basic extent allocation)" \
 "seq_write" "[seq_write]
 rw=write
@@ -189,6 +161,9 @@ filename=zero_test_file
 name=zero_write" \
 "write, extent, bigalloc, has_journal"
 
+# -------------------------------
+# Final summary
+# -------------------------------
 if [[ -z "$selected_test" ]]; then
     echo ""
     echo "=== All 10 FIO tests complete ==="
