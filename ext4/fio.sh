@@ -74,14 +74,16 @@ run_fio_test() {
 selected_test="$1"
 
 run_test() {
-    num="$1"
-    shift
+    local num="$1"
+    local desc="$2"
+    shift 2
+
     if [[ -z "$selected_test" || "$selected_test" == "$num" ]]; then
-        # Only print and run if not filtered OR matches the selection
-        echo "$num. $2"
-        run_fio_test "$@"
+        echo "$num. $desc"
+        run_fio_test "$num" "$@"
     fi
 }
+
 
 run_test 1 "SEQUENTIAL WRITE TEST (Basic extent allocation)" \
 "seq_write" "[seq_write]
