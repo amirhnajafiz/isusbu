@@ -12,7 +12,6 @@ echo ""
 # Create test directory
 TEST_DIR="fio_ext4_test"
 mkdir -p "$TEST_DIR"
-cd "$TEST_DIR" || exit 1
 
 echo "Test directory: $(pwd)"
 echo ""
@@ -41,7 +40,9 @@ run_fio_test() {
     fi
 
     echo "[LTTNG] Starting trace"
-    sudo lttng start --session="ext4-session"
+    sudo lttng start
+
+    cd "$TEST_DIR" || exit 1
 
     #
     # 2 — Write the FIO config and run workload
@@ -54,14 +55,13 @@ run_fio_test() {
     # 3 — Stop & Destroy LTTNG Session
     #
     echo "[LTTNG] Stopping trace"
-    sudo lttng stop --session="ext4-session"
-
-    echo "[LTTNG] Destroying session"
-    sudo lttng destroy --session="ext4-session"
+    sudo lttng stop
 
     echo "Completed test: $name"
     echo "----------------------------------------------"
     echo ""
+
+    cd .. || exit 1
 }
 
 # -------------------------
