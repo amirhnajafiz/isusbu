@@ -22,6 +22,7 @@ trace.txt
 trace.txt*
 plots/
 logs/
+ext4-*
 
 # Specific files
 lang-graph/callgraph.txt
