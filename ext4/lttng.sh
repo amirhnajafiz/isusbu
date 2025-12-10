@@ -45,6 +45,13 @@ while IFS= read -r tp; do
 
     echo "Enabling kernel probe for: $tp"
     lttng enable-event --channel=channel0 --kernel --probe="$tp" "$tp"
+    
+    STATUS=$?
+    if [ "$STATUS" -ne 0 ]; then
+        echo "$tp" >> failed.txt
+    else
+        echo "$tp" >> bound.txt
+    fi
 done < "$TP_FILE"
 
 echo "session built."
