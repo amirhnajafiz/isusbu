@@ -1,11 +1,11 @@
 #!/bin/sh
 
-# Function to check lttng existence
+# check command existence
 cexists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Check for lttng
+# check for lttng install
 if cexists "lttng"; then
     echo "lttng found!"
 else
@@ -13,32 +13,34 @@ else
     exit 1
 fi
 
+# tracing parameters
 SUFFIX=$1
 SESSION_NAME="ext4-session-${SUFFIX}"
 OUTPUT_DIR="/tmp/lttng-traces/${SESSION_NAME}"
 
-# Create session
+# read kernel probes for tracing from a target file
+KPROBE_FILE_PATH="kprobes.txt"
+if [ ! -f "$KPROBE_FILE_PATH" ]; then
+    echo "missing file: $KPROBE_FILE_PATH"
+    exit 1
+fi
+
+# create the lttng session
 lttng create "$SESSION_NAME" -o "$OUTPUT_DIR"
+
+# create the channel for tracing
 lttng enable-channel --kernel channel0 \
   --subbuf-size=8M \
   --num-subbuf=16
 
+# context needed for tracing
 lttng add-context --kernel --type procname
-lttng add-context --kernel --type pid
-lttng add-context --kernel --type tid
+lttng add-context --kernel --type gid
 lttng add-context --kernel --type callstack-kernel
 
-# File with tracepoints
-TP_FILE="tracepoints.txt"
-
-if [ ! -f "$TP_FILE" ]; then
-    echo "Missing file: $TP_FILE"
-    exit 1
-fi
-
-# Read tracepoints line-by-line
+# read probes line-by-line
 while IFS= read -r tp; do
-    # Skip empty or commented lines
+    # skip empty or commented lines
     case "$tp" in
         ""|\#*) continue ;;
     esac
@@ -50,11 +52,13 @@ while IFS= read -r tp; do
     if [ "$STATUS" -ne 0 ]; then
         echo "$tp" >> failed.txt
     else
-        echo "$tp" >> bound.txt
+        echo "$tp" >> hooked.txt
     fi
-done < "$TP_FILE"
+done < "$KPROBE_FILE_PATH"
 
 echo "session built."
+echo "probes for tracing: see hooked.txt"
+echo "failed hooks: see failed.txt"
 echo "run: sudo lttng start --session=$SESSION_NAME"
 echo "execute your workload ..."
 echo "run: sudo lttng stop --session=$SESSION_NAME"

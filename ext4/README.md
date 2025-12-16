@@ -1,5 +1,7 @@
 # Ext4
 
+Setup a target disk for FIO test.
+
 ```bash
 # make a 2GB empty image file
 dd if=/dev/zero of=ext4_test.img bs=1M count=2048
@@ -22,13 +24,18 @@ rm -rf /mnt/ext4test
 rm ext4_test.img
 ```
 
+Run this command to find the Ext4 kernel probes. 
+
+
 ```bash
-cat /proc/kallsyms | awk '$2 ~ /^[Tt]$/ && $3 ~ /^ext4_/ { if(!seen[$3]++) print $1, $3 }'
+cat /proc/kallsyms | awk '$2 ~ /^[Tt]$/ && $3 ~ /^ext4_/ { if(!seen[$3]++) print $3 }' > kprobes.txt
 ```
 
 ## Challenges
 
 1. LTTng ABI conflict with some of the tracepoints. Specifically, tracepoints that use complex data types which are not supported by LTTng.
+    - Fixed by using kernel probes
 2. Running processes in different groups to minimize noise in the logs.
+    - By using the group id, we can label and filter logs
 3. Creating different workloads to trigger Ext4 features (e.g., journaling, failure recovery, etc.).
 4. Mapping kernel stack addresses to functions or symbols.
