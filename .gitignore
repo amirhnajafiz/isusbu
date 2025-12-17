@@ -22,10 +22,10 @@ trace.txt
 trace.txt*
 plots/
 logs/
-logs.txt
-filter.txt
+*logs.txt
+*filter.txt
 ext4-*
-hits.txt
+*hits.txt
 
 # Specific files
 lang-graph/callgraph.txt

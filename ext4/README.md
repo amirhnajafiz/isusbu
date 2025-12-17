@@ -73,5 +73,7 @@ sudo -g fio_grp ./fio.sh
     - By using the group id, we can label and filter logs
 3. Creating different workloads to trigger Ext4 features (e.g., journaling, failure recovery, etc.).
 4. Mapping kernel stack addresses to functions or symbols.
-5. Large volume of tracing results to parse (11GB right now, when filtering it gets 4GB).
-6. Tracer discarded 700,000 events.
+5. Large volume of tracing results to parse (1 GB for only ext4 hit and 8 GB for callstack).
+6. Tracer discarded 220,000 events when tracing with callstack option.
+    - Even by enabling kstack tracing for only ext4 hit functions
+7. Tracing results different even using the same test cases.
