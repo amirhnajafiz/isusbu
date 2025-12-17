@@ -24,6 +24,11 @@ with open("filter.txt") as f:
                 for addr in callstack:
                     address_hits[addr] += 1
 
+# store the hits inside a file
+with open("hits.txt", "w") as f:
+    for func in event_hits:
+        f.write(f"{func}\n")
+
 # plot top N function events
 top_funcs = event_hits.most_common(100)
 func_names = [item[0] for item in top_funcs]
