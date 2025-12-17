@@ -12,7 +12,11 @@ event_hits = Counter()
 address_hits = Counter()
 
 with open("filter.txt") as f:
+    index = 0
     for line in f:
+        index += 1
+        if index == 100:
+            break
         # find ext4 function event
         m = re.match(r".*?\s+(ext4_\w+):", line)
         if m:
